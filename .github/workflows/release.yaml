@@ -4,25 +4,25 @@ on:
   # schedule:
   #   - cron: '0 * * * *'  # Runs every 24 hours
   push:
-    tags:
+    tags: 
       - 'v*.*.*'
       - 'daily'
   workflow_dispatch:
 
 jobs:
-  build-linux:
+  build-linux: 
     runs-on: ubuntu-latest
     strategy:
-      matrix:
+      matrix: 
         index: [1,2,3,4,5,6,7,8,9,10,
                 11,12,13,14,15,16,17,18,19,20,
                 21,22,23,24,25,26,27,28,29,30,
                 31,32,33,34,35,36]  # Indices for 37 parallel jobs
-    continue-on-error: true  # Allow individual build jobs to fail
-    steps:
+      fail-fast: false  # Don't cancel other jobs if one fails
+    steps: 
       - uses: actions/checkout@v3
 
-      - name: Install Dependencies
+      - name:  Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y curl
@@ -30,12 +30,7 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
           tool-cache: false
-          
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
           android: true
           dotnet: true
           haskell: true
@@ -44,10 +39,10 @@ jobs:
           swap-storage: true
 
       - name: Calculate Start Date
-        id: calc_date
+        id:  calc_date
         run: |
           base_date=$(date -u +"%Y%m%d")
-          index=${{ matrix.index }}
+          index=${{ matrix. index }}
           default_num_days=10
           total_days=365
           start_offset=$(( index * default_num_days ))
@@ -65,13 +60,18 @@ jobs:
           echo "num_days=${num_days}" >> $GITHUB_ENV
 
       - name: Run Historical Data Download
-        run: |
-          chmod +x ./ncar.sh
-          ./ncar.sh $start_date $num_days || true
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            chmod +x ./ncar.sh
+            ./ncar. sh $start_date $num_days
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: output/*.grib2
+          files: output/*. grib2
           prerelease: false
-          tag_name: daily
+          tag_name:  daily
