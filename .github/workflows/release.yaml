@@ -67,7 +67,7 @@ jobs:
           retry_wait_seconds: 60
           command: |
             chmod +x ./ncar.sh
-            ./ncar. sh $start_date $num_days
+            ./ncar.sh $start_date $num_days
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
