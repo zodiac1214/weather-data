@@ -72,6 +72,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: output/*. grib2
+          files: output/*.grib2
           prerelease: false
           tag_name:  daily
