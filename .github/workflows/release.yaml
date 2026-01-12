@@ -69,9 +69,62 @@ jobs:
             chmod +x ./ncar.sh
             ./ncar.sh $start_date $num_days
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: output/*.grib2
-          prerelease: false
-          tag_name:  daily
+      - name:  Group files by month and create releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if output directory exists and has files
+          if [ !  -d "output" ] || [ -z "$(ls -A output/*. grib2 2>/dev/null)" ]; then
+            echo "No GRIB files found in output directory"
+            exit 0
+          fi
+          
+          # Create temporary directory for organizing files by month
+          mkdir -p temp_releases
+          
+          # Process each grib2 file and group by month
+          for file in output/*.grib2; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              
+              # Extract date part (3rd field when splitting by '.')
+              # Format: gfs.0p25.YYYYMMDDHH. f###.grib2
+              date_part=$(echo "$filename" | cut -d'.' -f3)
+              
+              # Extract month (characters 5-6, e.g., "02" from "2024020706")
+              month="${date_part:4:2}"
+              
+              # Create directory for this month
+              mkdir -p "temp_releases/month_${month}"
+              
+              # Move file to month directory
+              mv "$file" "temp_releases/month_${month}/"
+              
+              echo "Grouped $filename into month $month"
+            fi
+          done
+          
+          # Create or update releases for each month
+          for month_dir in temp_releases/month_*; do
+            if [ -d "$month_dir" ]; then
+              month=$(basename "$month_dir" | sed 's/month_//')
+              tag_name="daily-${month}"
+              
+              echo "Creating/updating release for $tag_name"
+              
+              # Try to create release, if it exists, upload files to existing release
+              gh release create "$tag_name" \
+                --repo ${{ github. repository }} \
+                --title "Daily Weather Data - Month ${month}" \
+                --notes "Automated release for month ${month} weather data" \
+                2>/dev/null || echo "Release $tag_name already exists"
+              
+              # Upload all files for this month
+              gh release upload "$tag_name" \
+                "$month_dir"/*. grib2 \
+                --repo ${{ github.repository }} \
+                --clobber
+              
+              echo "Uploaded files to release $tag_name"
+            fi
+          done
