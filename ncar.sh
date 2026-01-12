@@ -38,7 +38,7 @@ do
     for hour in 00 06 12 18
     do
         # Skip if snow data already exists
-        curl -s https://api.github.com/repos/xairline/weather-data/releases/latest | grep "gfs.0p25.${date_str}${hour}.f006.grib2" > /dev/null
+        curl -s https://api.github.com/repos/zodiac1214/weather-data/releases/latest | grep "gfs.0p25.${date_str}${hour}.f006.grib2" > /dev/null
         if [ $? -eq 0 ]; then
             echo "Skipping ${date_str}${hour}"
             continue
