@@ -1,14 +1,48 @@
-name: 'Delete old artifacts'
+name: 'Delete old release assets'
 on:
-  workflow_dispatch:
+  workflow_dispatch: 
   schedule:
-    - cron: '0 * * * *' # every hour
+    - cron:  '0 * * * *' # every hour
 
 jobs:
-  delete-artifacts:
+  delete-old-assets:
     runs-on: ubuntu-latest
     steps:
-      - uses: kolpav/purge-artifacts-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          expire-in: 7days # Setting this to 0 will delete all artifacts
+      - name: Delete old release assets
+        env:
+          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+          REPO:  ${{ github.repository }}
+        run: |
+          # Set the age threshold (in days)
+          DAYS_OLD=360
+          CUTOFF_DATE=$(date -d "$DAYS_OLD days ago" +%s)
+          
+          # Get all releases
+          RELEASES=$(gh api repos/$REPO/releases --paginate)
+          
+          # Loop through each release
+          echo "$RELEASES" | jq -r '.[] | @base64' | while read -r release; do
+            _jq() {
+              echo "$release" | base64 --decode | jq -r "$1"
+            }
+            
+            RELEASE_TAG=$(_jq '.tag_name')
+            echo "Checking release: $RELEASE_TAG"
+            
+            # Get assets for this release
+            ASSETS=$(gh api repos/$REPO/releases/tags/$RELEASE_TAG | jq -r '.assets[]')
+            
+            echo "$ASSETS" | jq -c '.' | while read -r asset; do
+              ASSET_NAME=$(echo "$asset" | jq -r '.name')
+              ASSET_ID=$(echo "$asset" | jq -r '.id')
+              CREATED_AT=$(echo "$asset" | jq -r '.created_at')
+              CREATED_TIMESTAMP=$(date -d "$CREATED_AT" +%s)
+              
+              if [ $CREATED_TIMESTAMP -lt $CUTOFF_DATE ]; then
+                echo "Deleting old asset: $ASSET_NAME (ID: $ASSET_ID) from release $RELEASE_TAG"
+                gh api -X DELETE repos/$REPO/releases/assets/$ASSET_ID
+              else
+                echo "Keeping asset: $ASSET_NAME (not old enough)"
+              fi
+            done
+          done
