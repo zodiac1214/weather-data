@@ -74,7 +74,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Check if output directory exists and has files
-          if [ !  -d "output" ] || [ -z "$(ls -A output/*. grib2 2>/dev/null)" ]; then
+          if [ !  -d "output" ] || [ -z "$(ls -A output/*.grib2 2>/dev/null)" ]; then
             echo "No GRIB files found in output directory"
             exit 0
           fi
@@ -88,7 +88,7 @@ jobs:
               filename=$(basename "$file")
               
               # Extract date part (3rd field when splitting by '.')
-              # Format: gfs.0p25.YYYYMMDDHH. f###.grib2
+              # Format: gfs.0p25.YYYYMMDDHH.f###.grib2
               date_part=$(echo "$filename" | cut -d'.' -f3)
               
               # Extract month (characters 5-6, e.g., "02" from "2024020706")
@@ -114,14 +114,14 @@ jobs:
               
               # Try to create release, if it exists, upload files to existing release
               gh release create "$tag_name" \
-                --repo ${{ github. repository }} \
+                --repo ${{ github.repository }} \
                 --title "Daily Weather Data - Month ${month}" \
                 --notes "Automated release for month ${month} weather data" \
                 2>/dev/null || echo "Release $tag_name already exists"
               
               # Upload all files for this month
               gh release upload "$tag_name" \
-                "$month_dir"/*. grib2 \
+                "$month_dir"/*.grib2 \
                 --repo ${{ github.repository }} \
                 --clobber
               
